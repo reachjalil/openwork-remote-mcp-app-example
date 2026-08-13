@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Project Atlas Remote MCP App</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="application/json" id="openwork-mcp-app">
+      {
+        "schemaVersion": "openwork.remote-mcp-app/1",
+        "name": "Project Atlas",
+        "version": "%VITE_REMOTE_APP_VERSION%",
+        "description": "A portable project explorer imported from a public GitHub URL.",
+        "launchTool": {
+          "title": "Open Project Atlas",
+          "description": "Open the cached Project Atlas app."
+        },
+        "capabilities": [
+          {
+            "key": "projects",
+            "title": "Project search",
+            "description": "Find projects through the user's selected OpenWork Connect provider.",
+            "toolName": "search_projects",
+            "access": "read",
+            "required": true
+          }
+        ]
+      }
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
