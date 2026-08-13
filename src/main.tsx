@@ -5,45 +5,11 @@ import "./styles.css";
 
 declare const __APP_VERSION__: string;
 
-type RemoteCapability = {
-  key: string;
-  title: string;
-  toolName: string;
-  argumentsField?: "arguments";
-};
-
-type LaunchPayload = {
-  app: {
-    name: string;
-    version: string;
-  };
-  capabilities: RemoteCapability[];
-};
-
 type ConnectionState = "standalone" | "connecting" | "connected" | "ready" | "error" | "closed";
+const SEARCH_TOOL_NAME = "search_projects";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function readLaunchPayload(value: unknown): LaunchPayload | null {
-  if (!isRecord(value) || !isRecord(value.app) || !Array.isArray(value.capabilities)) return null;
-  if (typeof value.app.name !== "string" || typeof value.app.version !== "string") return null;
-  const capabilities = value.capabilities.flatMap((candidate) => {
-    if (!isRecord(candidate)) return [];
-    if (typeof candidate.key !== "string" || typeof candidate.toolName !== "string") return [];
-    const argumentsField: "arguments" | undefined = candidate.argumentsField === "arguments" ? "arguments" : undefined;
-    return [{
-      key: candidate.key,
-      title: typeof candidate.title === "string" ? candidate.title : candidate.key,
-      toolName: candidate.toolName,
-      ...(argumentsField ? { argumentsField } : {}),
-    }];
-  });
-  return {
-    app: { name: value.app.name, version: value.app.version },
-    capabilities,
-  };
 }
 
 function describeToolResult(value: unknown): string {
@@ -54,11 +20,6 @@ function describeToolResult(value: unknown): string {
   return text.join("\n") || "The capability completed.";
 }
 
-const initialPayload: LaunchPayload = {
-  app: { name: "Project Atlas", version: __APP_VERSION__ },
-  capabilities: [],
-};
-
 const isEmbedded = window.parent !== window;
 const mcpApp = new App(
   { name: "Project Atlas", version: __APP_VERSION__ },
@@ -67,20 +28,16 @@ const mcpApp = new App(
 );
 
 function ProjectAtlas() {
-  const [payload, setPayload] = useState(initialPayload);
   const [connectionState, setConnectionState] = useState<ConnectionState>(isEmbedded ? "connecting" : "standalone");
   const [query, setQuery] = useState("migration");
   const [result, setResult] = useState("");
   const [busy, setBusy] = useState(false);
-  const capability = payload.capabilities[0] ?? null;
 
   useEffect(() => {
     if (!isEmbedded) return;
 
     mcpApp.ontoolresult = (toolResult) => {
-      const next = readLaunchPayload(toolResult.structuredContent);
-      if (!next) return;
-      setPayload(next);
+      setResult(describeToolResult(toolResult));
       setConnectionState("ready");
     };
     mcpApp.onteardown = async () => {
@@ -94,7 +51,7 @@ function ProjectAtlas() {
   }, []);
 
   const status = useMemo(() => {
-    if (connectionState === "standalone") return "Standalone bundle preview — import this page URL into OpenWork.";
+    if (connectionState === "standalone") return "Standalone bundle preview — add the MCP server through OpenWork Connect, or import this page as a static Library app.";
     if (connectionState === "connected") return "MCP Apps handshake complete; waiting for launch data.";
     if (connectionState === "ready") return "Launch data received from the host as structuredContent.";
     if (connectionState === "error") return "The MCP Apps handshake could not be completed.";
@@ -103,13 +60,13 @@ function ProjectAtlas() {
   }, [connectionState]);
 
   const runSearch = async () => {
-    if (!capability) return;
+    if (connectionState !== "ready") return;
     setBusy(true);
     setResult("");
     try {
       const response = await mcpApp.callServerTool({
-        name: capability.toolName,
-        arguments: capability.argumentsField === "arguments" ? { arguments: { query } } : { query },
+        name: SEARCH_TOOL_NAME,
+        arguments: { query },
       });
       setResult(describeToolResult(response));
     } catch (error) {
@@ -124,19 +81,19 @@ function ProjectAtlas() {
       <p className="eyebrow">REMOTE MCP APP</p>
       <div className="heading-row">
         <div>
-          <h1>{payload.app.name}</h1>
-          <p className="subtitle">Artifact revision {payload.app.version}</p>
+          <h1>Project Atlas</h1>
+          <p className="subtitle">MCP App revision {__APP_VERSION__}</p>
         </div>
         <span className={`status status-${connectionState}`}>{connectionState}</span>
       </div>
       <p className="host-status">{status}</p>
 
       <section>
-        <h2>OpenWork Connect</h2>
-        <p>{payload.capabilities.length} host-provided capability ready</p>
-        {capability ? (
+        <h2>Same-server MCP tool</h2>
+        <p>The app calls the native <code>{SEARCH_TOOL_NAME}</code> tool on the MCP server that served this resource.</p>
+        {connectionState === "ready" ? (
           <div className="capability">
-            <label htmlFor="project-query">{capability.title}</label>
+            <label htmlFor="project-query">Project search</label>
             <div className="search-row">
               <input
                 id="project-query"
@@ -150,7 +107,7 @@ function ProjectAtlas() {
             </div>
           </div>
         ) : (
-          <p className="empty">Open this app through the local playground or import it into OpenWork to bind Project search.</p>
+          <p className="empty">Open this app through the local playground or its standard MCP server to enable Project search.</p>
         )}
       </section>
 

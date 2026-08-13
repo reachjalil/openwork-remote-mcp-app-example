@@ -2,21 +2,7 @@ import { AppBridge, PostMessageTransport } from "@modelcontextprotocol/ext-apps/
 import { searchMockProjects } from "./mock-data";
 import "./playground.css";
 
-const PROXY_TOOL_NAME = "openwork_remote_app_project_search";
-const launchPayload = {
-  app: {
-    name: "Project Atlas",
-    version: "local-dev",
-  },
-  capabilities: [
-    {
-      key: "projects",
-      title: "Project search",
-      toolName: PROXY_TOOL_NAME,
-      argumentsField: "arguments",
-    },
-  ],
-};
+const SEARCH_TOOL_NAME = "search_projects";
 
 function requireElement<T extends HTMLElement>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -27,10 +13,7 @@ function requireElement<T extends HTMLElement>(selector: string): T {
 function readQuery(value: unknown): string {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return "";
   const outer = value as Record<string, unknown>;
-  const inner = typeof outer.arguments === "object" && outer.arguments !== null && !Array.isArray(outer.arguments)
-    ? outer.arguments as Record<string, unknown>
-    : outer;
-  return typeof inner.query === "string" ? inner.query : "";
+  return typeof outer.query === "string" ? outer.query : "";
 }
 
 const frame = requireElement<HTMLIFrameElement>("#artifact-frame");
@@ -64,7 +47,7 @@ const bridge = new AppBridge(
 );
 
 bridge.oncalltool = async (params) => {
-  if (params.name !== PROXY_TOOL_NAME) {
+  if (params.name !== SEARCH_TOOL_NAME) {
     logEvent("Blocked tool call", params.name);
     return {
       isError: true,
@@ -74,11 +57,11 @@ bridge.oncalltool = async (params) => {
 
   const query = readQuery(params.arguments);
   const projects = searchMockProjects(query);
-  logEvent("Capability called", `${params.name} · query “${query}” · ${projects.length} result(s)`);
+  logEvent("Native MCP tool called", `${params.name} · query “${query}” · ${projects.length} result(s)`);
   return {
     content: [{ type: "text", text: `Found ${projects.length} mock project(s) for “${query}”.` }],
     structuredContent: {
-      source: "local OpenWork Connect mock",
+      source: "local standard MCP server mock",
       query,
       projects,
     },
@@ -97,9 +80,13 @@ bridge.oninitialized = () => {
   void bridge.sendToolInput({ arguments: {} })
     .then(() => bridge.sendToolResult({
       content: [{ type: "text", text: "Project Atlas is ready." }],
-      structuredContent: launchPayload,
+      structuredContent: {
+        source: "local standard MCP server mock",
+        query: "migration",
+        projects: searchMockProjects("migration"),
+      },
     }))
-    .then(() => logEvent("Launch data delivered", "The host sent capability mappings in tool structuredContent."))
+    .then(() => logEvent("Launch data delivered", "The host sent the launch tool result through standard structuredContent."))
     .catch((error: unknown) => {
       status.textContent = "Launch failed";
       status.dataset.state = "error";
@@ -110,7 +97,7 @@ bridge.oninitialized = () => {
 const targetWindow = frame.contentWindow;
 if (!targetWindow) throw new Error("The local app iframe is unavailable.");
 
-logEvent("Host ready", `Generated proxy tool: ${PROXY_TOOL_NAME}`);
+logEvent("Host ready", `Same-server tool: ${SEARCH_TOOL_NAME}`);
 void bridge.connect(new PostMessageTransport(targetWindow, targetWindow))
   .then(() => {
     frame.src = new URL("./?embedded=1", window.location.href).toString();

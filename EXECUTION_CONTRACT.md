@@ -1,96 +1,62 @@
-# Remote MCP App execution contract
+# Project Atlas execution contract
 
-This repository demonstrates the boundary between an independently authored web application and an OpenWork-managed Remote MCP App.
+This repository demonstrates one independently authored, standard MCP server with an MCP App UI.
 
-## 1. Authoring contract
+## 1. Authoring
 
-The repository is an ordinary open-source web project. Authors may:
+Authors may use Vite, React, another framework, or no framework; work with any coding agent; replace the sample tools and data; and deploy to any suitable host. OpenWork never needs the source repository. The deployable boundaries are the MCP endpoint and the compiled UI resource.
 
-- use Vite, React, another framework, or no framework;
-- run and test entirely on a local machine;
-- use any coding agent that can work in the repository;
-- replace the sample UI and deterministic mock data; and
-- publish from GitHub Pages or any static HTTPS origin.
+## 2. Server contract
 
-OpenWork does not require or execute the source repository. The repository is useful for humans and authoring agents; the compiled HTML file is the import boundary.
+`scripts/mcp-server.mjs` is an ordinary stateless Streamable HTTP MCP server. It advertises `io.modelcontextprotocol/ui`, registers native tools, and returns normal MCP resources and tool results.
 
-## 2. Portable artifact contract
+`open_project_atlas` references `ui://project-atlas/view.html` through `_meta.ui.resourceUri`. The resource is returned by exact `resources/read` with MIME type `text/html;profile=mcp-app`. `search_projects` remains a native same-server tool; OpenWork does not rename it or place it behind an app-specific wrapper protocol.
 
-The import URL must return a complete HTML document no larger than 768 KiB. The document must be self-contained: scripts, styles, framework runtime, and the MCP Apps client are inlined. It must not rely on runtime network access to load its application code.
+## 3. UI resource contract
 
-The document embeds an `openwork.remote-mcp-app/1` JSON manifest that declares:
+The MCP App resource is a complete self-contained HTML document under 768 KiB. Scripts, styles, React, and the MCP Apps client are inlined. It does not load application code, fonts, images, or stylesheets from the network.
 
-- stable app identity, version, and description;
-- launch-tool display metadata; and
-- requested capabilities with stable keys, source tool names, read/write access, and required/optional status.
+React source is an authoring input compiled server-side during the project build. The immutable HTML is the runtime MCP resource. No pre-rendered React markup is produced, so this is not React SSR.
 
-The manifest is declarative input to import. It is not a credential, an OpenWork connection, or an executable MCP server.
-
-## 3. Local execution contract
-
-`pnpm dev` runs two independent pieces in one Vite development server:
-
-1. The app view in `src/main.tsx` uses `@modelcontextprotocol/ext-apps` as a strict MCP Apps client.
-2. The playground in `src/playground.ts` uses the SDK's `AppBridge` as a local host.
-
-The host and app complete the same protocol sequence used after import:
+## 4. Runtime contract
 
 ```text
-App view              Local/OpenWork host             Connect provider
-   | -- initialize ----------> |
-   | <---- initialize result -- |
-   | -- initialized ---------> |
-   | <---- tool input/result -- |  launch structuredContent
-   | -- tools/call ----------> | -- mapped tool call -->
-   | <---- tool result -------- | <-- provider result ---
+MCP App                 Compatible host                  Project Atlas MCP server
+   | <--- resource HTML ------ | <--- resources/read --------- |
+   | --- ui/initialize ------> |
+   | <--- initialize result -- |
+   | --- initialized --------> |
+   | <--- launch tool result --| <--- content/structuredContent|
+   | --- tools/call(search_projects) -------------------------> |
+   | <--- content + structuredContent + _meta ---------------- |
 ```
 
-The local host answers the generated proxy tool with `src/mock-data.ts`. In OpenWork, the provider call instead goes through the user's selected OpenWork Connect connection. The app code is unchanged.
+The browser playground implements the compatible-host column locally. OpenWork Desktop implements it with a sandboxed iframe, isolated handshake, CSP enforcement, resource-size checks, teardown, and recovery.
 
-## 4. Data and credential boundary
+## 5. Data and credentials
 
-The portable bundle contains presentation logic and capability requests. It does not contain:
+The compiled resource contains only UI code and the native same-server tool name. It does not contain mock project records, OpenWork Connect IDs, tokens, API keys, cookies, or provider credentials. Launch data and search results arrive in tool `structuredContent`; human-readable summaries remain in `content`; provider/host metadata remains in `_meta`.
 
-- mock provider records;
-- OpenWork Connect connection IDs;
-- source MCP tool names selected during mapping;
-- access tokens, API keys, cookies, or provider credentials; or
-- a direct network integration with the backing service.
+The mock records in `src/mock-data.json` are loaded by the local host and example MCP server, not by the compiled UI bundle.
 
-At launch, OpenWork sends only the app metadata and generated proxy tool names required for that imported app. When the app calls one of those names, the provider validates the app/revision/capability scope, invokes the mapped Connect tool, and returns standard MCP content and `structuredContent`.
+## 6. OpenWork Connect
 
-Artifact data and the UI bundle therefore remain separate. The view receives only the result for the current launch or scoped capability call.
+When the public MCP endpoint is added through OpenWork Connect, OpenWork authorizes access per member and exposes that connection as its own standard MCP server endpoint. It preserves native names, input/output schemas, annotations, UI metadata, resources, content, `structuredContent`, `_meta`, and provider errors. Keeping each connection on a separate endpoint preserves tool-name isolation and the MCP Apps same-server boundary.
 
-## 5. Import and immutable execution
+Apps can call only tools from the MCP server that supplied their resource. OpenWork policy may block a tool, and write-capable tools require host/user approval; neither behavior creates an alternate application protocol.
 
-For each import or refresh, OpenWork:
+## 7. Static URL adapter
 
-1. fetches the public URL under its download and redirect policy;
-2. applies document, schema, CSP, and size validation;
-3. computes a digest and stores the source URL, compiled HTML, manifest, diagnostics, and immutable revision metadata;
-4. creates a versioned `ui://` resource URI for that revision;
-5. registers an exact render tool whose `_meta.ui.resourceUri` references that resource;
-6. exposes launch and scoped proxy tools through the OpenWork MCP provider; and
-7. activates a selected revision without mutating older revisions.
+The generated GitHub Pages document can also be imported as a static Library app. OpenWork downloads it once, validates that it is self-contained, enforces the byte limit, computes a digest, stores immutable source and metadata, and publishes it through an ordinary launch tool and versioned `ui://` resource.
 
-The cached HTML is the MCP App resource. A source URL changing does not silently change an active revision. Refresh creates a candidate revision that can be previewed and then activated; an older healthy revision can be restored.
+Static hosting cannot provide native MCP tools. The adapter does not invent capability mappings. Tool-backed apps must be distributed with a reachable MCP server.
 
-## 6. Cloud and host responsibilities
+## 8. Verification
 
-OpenWork's server/provider layer owns import metadata, immutable cached resources, capability bindings, tool registration, discovery notifications, and Connect-backed execution. Agents discover and call those tools through their OpenWork MCP connection, including from supported Cloud execution environments.
+`pnpm verify` proves:
 
-A compatible Desktop or web MCP Apps host owns sandboxed iframe rendering, handshake isolation, CSP enforcement, size limits, teardown, and recovery. Cloud agent execution of a proxy tool does not imply that Vite, React source, or an iframe runs inside the agent process.
-
-The source host is needed only when importing or refreshing. Once cached and activated, runtime operation uses OpenWork's immutable copy and the user's Connect capabilities.
-
-## 7. Compatibility checklist
-
-Before publishing a revision:
-
-- run `pnpm verify`;
-- keep the manifest and local launch payload semantically aligned;
-- keep capability keys stable across revisions when they represent the same permission;
-- treat a change to access, required status, or source tool as a reviewable contract change;
-- never add credentials or real user data to source, fixtures, or generated HTML;
-- verify the final public URL returns the exact committed bytes; and
-- import as a new immutable revision rather than overwriting an active cached bundle.
+- TypeScript authoring code compiles;
+- each generated UI is self-contained and below 768 KiB;
+- no OpenWork-specific runtime manifest or local mock records enter the resource;
+- the server exposes the exact native tools and UI resource metadata; and
+- standard calls preserve `content`, `structuredContent`, and `_meta`.

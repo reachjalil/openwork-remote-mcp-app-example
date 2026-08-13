@@ -1,0 +1,23 @@
+[
+  {
+    "id": "project-atlas",
+    "name": "Project Atlas",
+    "summary": "Migrate the customer workspace to the unified project index.",
+    "status": "active",
+    "owner": "Mina"
+  },
+  {
+    "id": "project-lighthouse",
+    "name": "Project Lighthouse",
+    "summary": "Plan the analytics migration and reporting cutover.",
+    "status": "planning",
+    "owner": "Theo"
+  },
+  {
+    "id": "project-orbit",
+    "name": "Project Orbit",
+    "summary": "Consolidate partner onboarding into the new operations hub.",
+    "status": "paused",
+    "owner": "Ava"
+  }
+]

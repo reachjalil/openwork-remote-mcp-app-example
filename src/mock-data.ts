@@ -1,3 +1,5 @@
+import projects from "./mock-data.json";
+
 export type MockProject = {
   id: string;
   name: string;
@@ -10,29 +12,7 @@ export type MockProject = {
  * Deterministic local data that stands in for a user's selected OpenWork
  * Connect provider. It is never compiled into the published artifact bundle.
  */
-export const mockProjects: MockProject[] = [
-  {
-    id: "project-atlas",
-    name: "Project Atlas",
-    summary: "Migrate the customer workspace to the unified project index.",
-    status: "active",
-    owner: "Mina",
-  },
-  {
-    id: "project-lighthouse",
-    name: "Project Lighthouse",
-    summary: "Plan the analytics migration and reporting cutover.",
-    status: "planning",
-    owner: "Theo",
-  },
-  {
-    id: "project-orbit",
-    name: "Project Orbit",
-    summary: "Consolidate partner onboarding into the new operations hub.",
-    status: "paused",
-    owner: "Ava",
-  },
-];
+export const mockProjects = projects as MockProject[];
 
 export function searchMockProjects(query: string): MockProject[] {
   const normalizedQuery = query.trim().toLocaleLowerCase();

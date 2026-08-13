@@ -4,34 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="A standard MCP App project explorer with a native same-server search tool." />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%232563eb'/%3E%3Cpath d='M4 8h8M8 4v8' stroke='white' stroke-width='2'/%3E%3C/svg%3E" />
     <title>Project Atlas Remote MCP App</title>
   </head>
   <body>
     <div id="root"></div>
     <!-- Portable revision %VITE_REMOTE_APP_VERSION% -->
-    <script type="application/json" id="openwork-mcp-app">
-      {
-        "schemaVersion": "openwork.remote-mcp-app/1",
-        "name": "Project Atlas",
-        "version": "%VITE_REMOTE_APP_VERSION%",
-        "description": "A portable project explorer imported from a public GitHub URL.",
-        "launchTool": {
-          "title": "Open Project Atlas",
-          "description": "Open the cached Project Atlas app."
-        },
-        "capabilities": [
-          {
-            "key": "projects",
-            "title": "Project search",
-            "description": "Find projects through the user's selected OpenWork Connect provider.",
-            "toolName": "search_projects",
-            "access": "read",
-            "required": true
-          }
-        ]
-      }
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
