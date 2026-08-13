@@ -17,5 +17,18 @@ for (const target of targets) {
   const manifest = JSON.parse(match[1]);
   if (manifest.schemaVersion !== "openwork.remote-mcp-app/1") throw new Error(`${target.file} has the wrong schema version.`);
   if (manifest.version !== target.version) throw new Error(`${target.file} has version ${manifest.version}, expected ${target.version}.`);
+  if (!Array.isArray(manifest.capabilities) || manifest.capabilities.length !== 1) {
+    throw new Error(`${target.file} must declare exactly one example capability.`);
+  }
+  const [capability] = manifest.capabilities;
+  if (capability.key !== "projects" || capability.toolName !== "search_projects") {
+    throw new Error(`${target.file} does not declare the expected Project search contract.`);
+  }
+  if (capability.access !== "read" || capability.required !== true) {
+    throw new Error(`${target.file} must keep Project search required and read-only.`);
+  }
+  for (const forbidden of ["mockProjects", "local OpenWork Connect mock", "openwork_remote_app_project_search"]) {
+    if (html.includes(forbidden)) throw new Error(`${target.file} contains local-host-only value ${forbidden}.`);
+  }
   console.log(`${target.file}: ${details.size} bytes, Remote MCP App ${manifest.version}`);
 }

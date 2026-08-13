@@ -5,15 +5,19 @@
   "type": "module",
   "packageManager": "pnpm@11.4.0",
   "scripts": {
-    "dev": "vite",
-    "build": "VITE_REMOTE_APP_VERSION=1.0.0 VITE_REMOTE_APP_OUT_DIR=docs vite build && VITE_REMOTE_APP_VERSION=2.0.0 VITE_REMOTE_APP_OUT_DIR=docs/v2 vite build",
+    "dev": "VITE_REMOTE_APP_VERSION=local-dev vite --open /playground.html",
+    "dev:app": "VITE_REMOTE_APP_VERSION=local-dev vite --open /",
+    "build": "VITE_REMOTE_APP_VERSION=1.0.0 VITE_REMOTE_APP_OUT_DIR=docs vite build && VITE_REMOTE_APP_VERSION=2.0.0 VITE_REMOTE_APP_OUT_DIR=docs/v2 vite build && node scripts/normalize-build.mjs",
     "check": "node scripts/check-build.mjs",
-    "verify": "pnpm build && pnpm check"
+    "check:types": "tsc --noEmit",
+    "verify": "pnpm check:types && pnpm build && pnpm check"
   },
   "dependencies": {
     "@modelcontextprotocol/ext-apps": "1.7.5",
+    "@modelcontextprotocol/sdk": "1.29.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "4.1.13"
   },
   "devDependencies": {
     "@types/node": "25.6.0",

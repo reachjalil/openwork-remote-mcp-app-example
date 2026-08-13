@@ -1,5 +1,5 @@
 import { App, PostMessageTransport } from "@modelcontextprotocol/ext-apps";
-import { StrictMode, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -19,6 +19,8 @@ type LaunchPayload = {
   };
   capabilities: RemoteCapability[];
 };
+
+type ConnectionState = "standalone" | "connecting" | "connected" | "ready" | "error" | "closed";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -57,6 +59,7 @@ const initialPayload: LaunchPayload = {
   capabilities: [],
 };
 
+const isEmbedded = window.parent !== window;
 const mcpApp = new App(
   { name: "Project Atlas", version: __APP_VERSION__ },
   {},
@@ -65,16 +68,38 @@ const mcpApp = new App(
 
 function ProjectAtlas() {
   const [payload, setPayload] = useState(initialPayload);
-  const [connectionState, setConnectionState] = useState(window.parent === window ? "standalone" : "connecting");
+  const [connectionState, setConnectionState] = useState<ConnectionState>(isEmbedded ? "connecting" : "standalone");
   const [query, setQuery] = useState("migration");
   const [result, setResult] = useState("");
   const [busy, setBusy] = useState(false);
   const capability = payload.capabilities[0] ?? null;
+
+  useEffect(() => {
+    if (!isEmbedded) return;
+
+    mcpApp.ontoolresult = (toolResult) => {
+      const next = readLaunchPayload(toolResult.structuredContent);
+      if (!next) return;
+      setPayload(next);
+      setConnectionState("ready");
+    };
+    mcpApp.onteardown = async () => {
+      setConnectionState("closed");
+      return {};
+    };
+
+    void mcpApp.connect(new PostMessageTransport(window.parent, window.parent))
+      .then(() => setConnectionState((current) => current === "connecting" ? "connected" : current))
+      .catch(() => setConnectionState("error"));
+  }, []);
+
   const status = useMemo(() => {
-    if (connectionState === "standalone") return "Standalone preview — import this page URL into OpenWork.";
-    if (connectionState === "ready") return "Loaded from OpenWork's immutable cached revision.";
+    if (connectionState === "standalone") return "Standalone bundle preview — import this page URL into OpenWork.";
+    if (connectionState === "connected") return "MCP Apps handshake complete; waiting for launch data.";
+    if (connectionState === "ready") return "Launch data received from the host as structuredContent.";
     if (connectionState === "error") return "The MCP Apps handshake could not be completed.";
-    return "Connecting to the OpenWork MCP Apps host…";
+    if (connectionState === "closed") return "The host closed this app session.";
+    return "Connecting to the MCP Apps host…";
   }, [connectionState]);
 
   const runSearch = async () => {
@@ -100,7 +125,7 @@ function ProjectAtlas() {
       <div className="heading-row">
         <div>
           <h1>{payload.app.name}</h1>
-          <p className="subtitle">Cached revision {payload.app.version}</p>
+          <p className="subtitle">Artifact revision {payload.app.version}</p>
         </div>
         <span className={`status status-${connectionState}`}>{connectionState}</span>
       </div>
@@ -108,7 +133,7 @@ function ProjectAtlas() {
 
       <section>
         <h2>OpenWork Connect</h2>
-        <p>{payload.capabilities.length} OpenWork Connect capability ready</p>
+        <p>{payload.capabilities.length} host-provided capability ready</p>
         {capability ? (
           <div className="capability">
             <label htmlFor="project-query">{capability.title}</label>
@@ -125,7 +150,7 @@ function ProjectAtlas() {
             </div>
           </div>
         ) : (
-          <p className="empty">Import the app and bind its Project search capability to enable this control.</p>
+          <p className="empty">Open this app through the local playground or import it into OpenWork to bind Project search.</p>
         )}
       </section>
 
@@ -136,74 +161,4 @@ function ProjectAtlas() {
 
 const mount = document.getElementById("root");
 if (!mount) throw new Error("Project Atlas mount element is missing.");
-const root = createRoot(mount);
-root.render(<StrictMode><ProjectAtlas /></StrictMode>);
-
-mcpApp.ontoolresult = (toolResult) => {
-  const next = readLaunchPayload(toolResult.structuredContent);
-  if (!next) return;
-  root.render(<StrictMode><ProjectAtlasWithPayload payload={next} /></StrictMode>);
-};
-
-function ProjectAtlasWithPayload({ payload }: { payload: LaunchPayload }) {
-  const [connectionState] = useState("ready");
-  return <ProjectAtlasLoaded payload={payload} connectionState={connectionState} />;
-}
-
-function ProjectAtlasLoaded({ payload, connectionState }: { payload: LaunchPayload; connectionState: string }) {
-  const [query, setQuery] = useState("migration");
-  const [result, setResult] = useState("");
-  const [busy, setBusy] = useState(false);
-  const capability = payload.capabilities[0] ?? null;
-  const runSearch = async () => {
-    if (!capability) return;
-    setBusy(true);
-    setResult("");
-    try {
-      const response = await mcpApp.callServerTool({
-        name: capability.toolName,
-        arguments: capability.argumentsField === "arguments" ? { arguments: { query } } : { query },
-      });
-      setResult(describeToolResult(response));
-    } catch (error) {
-      setResult(error instanceof Error ? error.message : "The capability call failed.");
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <main>
-      <p className="eyebrow">REMOTE MCP APP</p>
-      <div className="heading-row">
-        <div><h1>{payload.app.name}</h1><p className="subtitle">Cached revision {payload.app.version}</p></div>
-        <span className={`status status-${connectionState}`}>{connectionState}</span>
-      </div>
-      <p className="host-status">Loaded from OpenWork's immutable cached revision.</p>
-      <section>
-        <h2>OpenWork Connect</h2>
-        <p>{payload.capabilities.length} OpenWork Connect capability ready</p>
-        {capability ? (
-          <div className="capability">
-            <label htmlFor="project-query">{capability.title}</label>
-            <div className="search-row">
-              <input id="project-query" value={query} onChange={(event) => setQuery(event.target.value)} />
-              <button type="button" disabled={busy || !query.trim()} onClick={() => void runSearch()}>{busy ? "Searching…" : "Search"}</button>
-            </div>
-          </div>
-        ) : <p className="empty">No bound capability was provided.</p>}
-      </section>
-      {result ? <pre aria-live="polite">{result}</pre> : null}
-    </main>
-  );
-}
-
-mcpApp.onteardown = async () => {
-  root.unmount();
-  return {};
-};
-
-if (window.parent !== window) {
-  void mcpApp.connect(new PostMessageTransport(window.parent, window.parent)).catch((error: unknown) => {
-    mount.textContent = error instanceof Error ? error.message : "The MCP Apps handshake failed.";
-  });
-}
+createRoot(mount).render(<ProjectAtlas />);
