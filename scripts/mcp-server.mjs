@@ -285,7 +285,10 @@ export function startExampleMcpServer(options = {}) {
       return;
     }
     const mcpServer = await createExampleMcpServer();
-    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+      enableJsonResponse: true,
+    });
     response.on("close", () => {
       void transport.close();
       void mcpServer.close();
