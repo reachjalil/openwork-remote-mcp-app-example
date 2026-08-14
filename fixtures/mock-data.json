@@ -1,0 +1,57 @@
+{
+  "projects": [
+    {
+      "id": "project-lighthouse",
+      "name": "Atlas migration",
+      "owner": "Mina Patel",
+      "status": "On track",
+      "summary": "Move the customer workspace catalog onto the new OpenWork Connect model.",
+      "progress": 78
+    },
+    {
+      "id": "project-orbit",
+      "name": "Partner operations",
+      "owner": "Noah Williams",
+      "status": "At risk",
+      "summary": "Unify partner onboarding, approval, and launch reporting.",
+      "progress": 43
+    },
+    {
+      "id": "project-harbour",
+      "name": "Cloud execution hardening",
+      "owner": "Ava Thompson",
+      "status": "On track",
+      "summary": "Complete production acceptance and provider interoperability checks.",
+      "progress": 64
+    }
+  ],
+  "capabilities": [
+    {
+      "name": "demo.projects.search",
+      "title": "Search project portfolio",
+      "description": "Search Project Atlas records by name, owner, summary, or status.",
+      "kind": "mcp",
+      "schemaDigest": "sha256:78ad0ad24c33543275268af14e4ba852d1d349683a8d1947ce5d67d9f5136f31"
+    },
+    {
+      "name": "demo.projects.summary",
+      "title": "Summarize project status",
+      "description": "Return portfolio counts and average completion.",
+      "kind": "mcp",
+      "schemaDigest": "sha256:be29d74a022d8e3c3eae8f16df3a6f7ee71e66695f94a772d76d87755b46987a"
+    },
+    {
+      "name": "demo.program.release_brief",
+      "title": "Project release brief Program",
+      "description": "Run a durable Program that prepares a release brief from project data.",
+      "kind": "script"
+    }
+  ],
+  "gallery": {
+    "records": [
+      { "id": "row-1", "name": "Workspace sync", "description": "Native MCP connection", "status": "Ready", "owner": "Mina", "updated": "2m ago" },
+      { "id": "row-2", "name": "Release brief", "description": "Code Mode Program", "status": "Review", "owner": "Noah", "updated": "18m ago" },
+      { "id": "row-3", "name": "Provider audit", "description": "Scheduled automation", "status": "Ready", "owner": "Ava", "updated": "1h ago" }
+    ]
+  }
+}

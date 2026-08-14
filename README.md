@@ -1,102 +1,113 @@
-# Project Atlas: a standard MCP App you can fork
+# OpenWork MCP App examples
 
-Project Atlas is a complete open-source MCP App development repository. It includes a Vite + React UI, a real Streamable HTTP MCP server, deterministic mock data, a browser playground, a self-contained published resource, and protocol-level checks.
+A public, forkable monorepo of standard MCP Apps for testing OpenWork Connect. It contains three Vite + React interfaces, shared MCP Apps runtime helpers, a real Streamable HTTP MCP server, deterministic host-side fixtures, a multi-App browser playground, and protocol-level verification.
 
-You can clone it, give it to your own coding agent, change the interface or tools, test everything locally, and then choose either distribution path: deploy its standard MCP server through OpenWork Connect, or publish the self-contained UI and import that URL into an OpenWork Plugin with a Code Mode Program. There is no OpenWork-specific runtime manifest in the HTML.
+Build the Apps outside OpenWork with any coding agent, publish a self-contained `index.html`, and import that URL into an OpenWork Plugin. Or deploy this repository's MCP server and add it through Connect as a normal tool-backed MCP server.
 
-## Run the complete local loop
+## Published Apps
+
+Each URL is a complete self-contained MCP App resource. It contains no credentials, mock records, or OpenWork-specific runtime manifest.
+
+| Example | What it demonstrates | URL to import |
+| --- | --- | --- |
+| Project Atlas | Metrics, search, table/detail layout, capability discovery and execution | `https://reachjalil.github.io/openwork-remote-mcp-app-example/project-atlas/index.html` |
+| Capability Explorer | Semantic capability search, exact match selection, arguments, and approved execution | `https://reachjalil.github.io/openwork-remote-mcp-app-example/capability-explorer/index.html` |
+| Component Gallery | Cards, status chips, loading/empty/error states, responsive table, and timeline | `https://reachjalil.github.io/openwork-remote-mcp-app-example/component-gallery/index.html` |
+| Project Atlas revision 2 | A second immutable URL for update, activation, retirement, and rollback tests | `https://reachjalil.github.io/openwork-remote-mcp-app-example/v2/index.html` |
+
+The original Project Atlas URL remains available at `https://reachjalil.github.io/openwork-remote-mcp-app-example/index.html`.
+
+## Run locally
 
 Requires Node.js 20+ and pnpm.
 
 ```bash
+git clone https://github.com/reachjalil/openwork-remote-mcp-app-example.git
+cd openwork-remote-mcp-app-example
 pnpm install
 pnpm verify
 pnpm dev
 ```
 
-Vite opens `http://localhost:5173/playground.html`. The playground embeds the app, performs the MCP Apps `postMessage` handshake, delivers launch data in tool-result `structuredContent`, and simulates OpenWork's app-specific Program tool with records from `src/mock-data.json`. The separate real MCP server exercises the native `search_projects` fallback.
+Open `http://localhost:5173/`. The playground embeds all three generated documents, performs the real MCP Apps `postMessage` handshake, delivers ordinary launch `structuredContent`, and handles ordinary same-server `tools/call` requests with deterministic fixtures.
 
-In another terminal, run the real MCP server:
+Run one App without the multi-App host while editing:
+
+```bash
+pnpm dev:atlas
+pnpm dev:capabilities
+pnpm dev:gallery
+```
+
+Run the standard MCP server in another terminal:
 
 ```bash
 pnpm start:mcp
 # http://127.0.0.1:8787/mcp
 ```
 
-That endpoint is a stateless Streamable HTTP MCP server. It advertises:
+The endpoint is a stateless Streamable HTTP MCP server with three versioned `ui://` resources, three launch tools bound through exact `_meta.ui.resourceUri`, and app-visible same-server tools. `pnpm check:mcp` connects with the official SDK and verifies resource reads, MIME types, metadata, launch data, capability search, exact execution, and the native Project Atlas tool.
 
-- `open_project_atlas`, with `_meta.ui.resourceUri` set to `ui://project-atlas/view.html`;
-- `search_projects`, an app-visible native read-only tool;
-- the exact `ui://project-atlas/view.html` resource as `text/html;profile=mcp-app`; and
-- the stable `io.modelcontextprotocol/ui` extension.
-
-`pnpm check:mcp` connects through the official SDK and verifies the tool definitions, exact resource URI, MIME type, UI metadata, `structuredContent`, and result `_meta`.
-
-## Build with your own agent
-
-[`AGENTS.md`](AGENTS.md) gives coding agents the repository contract. The main surfaces are:
+## Monorepo map
 
 | Surface | Purpose |
 | --- | --- |
-| `src/main.tsx` | React-authored MCP App UI |
-| `src/mock-data.json` | Deterministic data shared by the browser playground and MCP server |
-| `src/playground.ts` | Local browser MCP Apps host |
-| `scripts/mcp-server.mjs` | Standard Streamable HTTP MCP server |
+| `apps/project-atlas` | Tool-backed project dashboard |
+| `apps/capability-explorer` | Capability-search and execution reference UI |
+| `apps/component-gallery` | Reusable interface pattern gallery |
+| `packages/mcp-app-runtime` | MCP Apps handshake, launch-result, and same-server tool-call helper |
+| `packages/example-ui` | Shared React components and visual tokens |
+| `playground` | Deterministic browser host for all generated Apps |
+| `fixtures/mock-data.json` | Host/server-only local data; never bundled into the Apps |
+| `scripts/mcp-server.mjs` | Standard MCP server exposing all three Apps |
 | `scripts/check-mcp-server.mjs` | Protocol-level contract check |
-| `docs/index.html` | Published self-contained UI resource |
-| `docs/v2/index.html` | Second immutable resource for cache/lifecycle testing |
+| `docs` | Generated self-contained Pages resources; do not hand-edit |
 
-React is only the authoring implementation. Vite compiles it into one self-contained client document. The server returns that immutable document as the MCP App resource; OpenWork does not run this repository, Vite, or React source at render time, and this is not React SSR.
+React is only an authoring choice. Vite compiles each UI into one self-contained client document. That immutable HTML document is the MCP App resource; OpenWork never executes this source tree at render time, and this is not React SSR.
 
-## Add it to OpenWork
+## Use with OpenWork
 
-### Full tool-backed MCP App through Connect
+### Import a published App URL
 
-1. Deploy this repository's Node server to a public HTTPS service.
-2. Ensure its Streamable HTTP endpoint is available at `/mcp`.
-3. Add that endpoint as a normal server in OpenWork Connect.
-4. Grant the appropriate organization, team, or member access in Connect.
-5. OpenWork agents discover the server's native tools. Calling `open_project_atlas` renders the attached resource; the app's `search_projects` call stays on that same server.
+1. Choose or create an OpenWork Plugin.
+2. Ask an agent to import one of the HTTPS URLs above through OpenWork Connect.
+3. Review and approve the third-party executable-content installation.
+4. Open the cached resource from the Plugin's MCP capabilities.
 
-OpenWork may proxy an authorized Connect server on an OpenWork-owned URL, but it preserves the MCP server's native tool names, schemas, resource URIs, UI metadata, content, `structuredContent`, and `_meta`. Provider credentials stay server-side.
+OpenWork downloads the exact HTML bytes server-side, validates and digests them, and serves the cached immutable revision through a versioned `ui://` resource. It does not execute or iframe the live source URL.
 
-### Static URL adapter
+For Apps that need Connect tools or Code Mode Programs, the OpenWork launch result supplies the exact app-visible gateway tool names in ordinary `structuredContent`:
 
-GitHub Pages publishes the generated document at:
-
-```text
-https://reachjalil.github.io/openwork-remote-mcp-app-example/index.html
+```json
+{
+  "serverTools": {
+    "searchCapabilities": "search_capabilities",
+    "executeCapability": "execute_capability"
+  }
+}
 ```
 
-An OpenWork build with the URL-import adapter can download that document into the Library, validate it, digest it, and serve it later as an immutable standard MCP App resource. The cached copy no longer depends on GitHub at runtime.
+The App searches by intent, selects an exact capability (and schema digest when present), then executes it with ordinary same-server MCP `tools/call`. OpenWork mediates the underlying Connect tool or durable Program, preserving authorization, confirmation, and audit behavior. The sandboxed iframe receives no provider credentials and does not contact unrelated MCP servers directly. `codemodeScripts` policy can control Program availability without enabling OpenWork-generated UI authoring.
 
-The Pages URL is deliberately static, so it cannot host `search_projects` itself. When OpenWork imports it, the launch result advertises an app-specific, app-visible Program tool on the same OpenWork MCP server. Add a Code Mode Program to the app's Plugin and select it; the UI calls the advertised tool with standard `tools/call`, and the Program can compose the user's OpenWork Connect capabilities server-side. Credentials and connection IDs never enter the HTML.
+The Component Gallery is deliberately launch-data-only, so it is useful even when capability search is unavailable. Project Atlas and Capability Explorer surface a clear disconnected state until a compatible host supplies gateway names.
 
-The bundle falls back to its native `search_projects` tool when it is rendered by this repository's own MCP server. It uses the Program tool only when the launch result explicitly supplies that tool name.
+### Add the native MCP server through Connect
 
-## Execution boundary
+1. Deploy `pnpm start:mcp` to a public HTTPS Node service, or expose the local port with a temporary HTTPS tunnel.
+2. Add its `/mcp` URL through OpenWork Connect.
+3. Grant the desired member/team access.
+4. Ask the agent to call `open_project_atlas`, `open_capability_explorer`, or `open_component_gallery`.
 
-The standard flow is:
+This path requires no conversion. OpenWork discovers each tool's `_meta.ui.resourceUri`, reads its `ui://` resource from the originating server, and lets the sandboxed App call that server's app-visible tools through the standard host bridge.
 
-```text
-Agent -> tools/list -> open_project_atlas (_meta.ui.resourceUri)
-Agent -> tools/call -> content + structuredContent + _meta
-Host  -> resources/read(ui://project-atlas/view.html)
-Host  -> sandboxed MCP App iframe
-App   -> tools/call(search_projects) on the same MCP server
-```
+## Demo it
 
-For the URL-import path, the final line becomes:
+[`DEMO_SCRIPT.md`](DEMO_SCRIPT.md) contains a prepared 7–10 minute product demo, exact agent prompts, local and Connect setup, the native and URL-import paths, expected proof points, and fallbacks.
 
-```text
-App     -> tools/call(run_program_<app>) on the same OpenWork MCP server
-Program -> connected MCP capabilities inside OpenWork Connect
-```
+The OpenWork implementation is tracked in [PR #3782](https://github.com/different-ai/openwork/pull/3782), stacked on the merged Plugin foundation. This repository intentionally demonstrates standard MCP concepts; URL downloading and semantic capability search are OpenWork installation/gateway behavior, not new MCP protocol primitives.
 
-The UI bundle contains presentation logic and a native fallback tool name. An imported app reads its exact Program tool name from launch `structuredContent`; it does not guess or embed an OpenWork installation identifier. The bundle contains no credentials, OpenWork connection IDs, or mock records. Data arrives at render time from standard MCP tool results.
-
-See [`EXECUTION_CONTRACT.md`](EXECUTION_CONTRACT.md) for the full boundary. The OpenWork integration is developed in [OpenWork PR #3758](https://github.com/different-ai/openwork/pull/3758), on top of the merged Plugin foundation from [PR #3759](https://github.com/different-ai/openwork/pull/3759).
+See [`EXECUTION_CONTRACT.md`](EXECUTION_CONTRACT.md) for the runtime and security boundary and [`CONTRIBUTING.md`](CONTRIBUTING.md) for the verification loop.
 
 ## License
 
-MIT. Fork it, replace Project Atlas, keep the MCP contract standard, and publish your own server and UI resource.
+MIT. Fork the repo, replace the examples, keep the MCP contracts standard, and publish your own resources or server.

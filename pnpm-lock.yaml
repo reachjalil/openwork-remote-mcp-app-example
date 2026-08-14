@@ -46,6 +46,77 @@ importers:
         specifier: 2.3.3
         version: 2.3.3(vite@8.2.1(@types/node@25.6.0))
 
+  apps/capability-explorer:
+    dependencies:
+      '@modelcontextprotocol/ext-apps':
+        specifier: 1.7.5
+        version: 1.7.5(@modelcontextprotocol/sdk@1.29.0(zod@4.1.13))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(zod@4.1.13)
+      '@openwork-examples/mcp-app-runtime':
+        specifier: workspace:*
+        version: link:../../packages/mcp-app-runtime
+      '@openwork-examples/ui':
+        specifier: workspace:*
+        version: link:../../packages/example-ui
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
+
+  apps/component-gallery:
+    dependencies:
+      '@modelcontextprotocol/ext-apps':
+        specifier: 1.7.5
+        version: 1.7.5(@modelcontextprotocol/sdk@1.29.0(zod@4.1.13))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(zod@4.1.13)
+      '@openwork-examples/mcp-app-runtime':
+        specifier: workspace:*
+        version: link:../../packages/mcp-app-runtime
+      '@openwork-examples/ui':
+        specifier: workspace:*
+        version: link:../../packages/example-ui
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
+
+  apps/project-atlas:
+    dependencies:
+      '@modelcontextprotocol/ext-apps':
+        specifier: 1.7.5
+        version: 1.7.5(@modelcontextprotocol/sdk@1.29.0(zod@4.1.13))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(zod@4.1.13)
+      '@openwork-examples/mcp-app-runtime':
+        specifier: workspace:*
+        version: link:../../packages/mcp-app-runtime
+      '@openwork-examples/ui':
+        specifier: workspace:*
+        version: link:../../packages/example-ui
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
+
+  packages/example-ui:
+    dependencies:
+      react:
+        specifier: ^19.2.8
+        version: 19.2.8
+
+  packages/mcp-app-runtime:
+    dependencies:
+      '@modelcontextprotocol/ext-apps':
+        specifier: ^1.7.5
+        version: 1.7.5(@modelcontextprotocol/sdk@1.29.0(zod@4.1.13))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(zod@4.1.13)
+      react:
+        specifier: ^19.2.8
+        version: 19.2.8
+
+  playground: {}
+
 packages:
 
   '@hono/node-server@1.19.17':

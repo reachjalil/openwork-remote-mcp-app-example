@@ -1,6 +1,6 @@
-# Agent guide for Project Atlas
+# Agent guide for the OpenWork MCP App examples
 
-Project Atlas is an open-source, forkable standard MCP App. Agents may change the UI, mock data, and native MCP tools while preserving the protocol boundary below.
+This is a public, forkable monorepo of independently authored standard MCP Apps. Agents may add examples, change interfaces, fixtures, and native tools while preserving the protocol and security boundaries below.
 
 ## Start and verify
 
@@ -11,29 +11,34 @@ pnpm start:mcp
 pnpm verify
 ```
 
-- `pnpm dev` opens `playground.html`, a deterministic browser host for fast UI iteration.
-- `pnpm start:mcp` exposes a real stateless Streamable HTTP MCP server at `http://127.0.0.1:8787/mcp`.
-- `pnpm verify` builds the self-contained UI resource and tests the server's tools, resource, UI metadata, results, and size limits.
+- `pnpm dev` builds every App and opens the multi-App local host at `http://localhost:5173/`.
+- `pnpm start:mcp` exposes the real stateless Streamable HTTP server at `http://127.0.0.1:8787/mcp`.
+- `pnpm verify` type-checks, builds all self-contained resources, enforces portability/size limits, and tests tools, resources, UI metadata, gateway calls, and result fields.
 
-## Safe editing surfaces
+## Editing surfaces
 
-- Change the app in `src/main.tsx` and `src/styles.css`.
-- Change deterministic local/server data in `src/mock-data.json`.
-- Change browser-host behavior in `src/playground.ts`.
+- Add or change an App in `apps/<example>/src`.
+- Share handshake/tool-call logic through `packages/mcp-app-runtime`.
+- Share UI elements through `packages/example-ui`.
+- Change deterministic local/server data in `fixtures/mock-data.json`.
+- Change browser-host behavior in `playground`.
 - Change the standard MCP server in `scripts/mcp-server.mjs`.
-- Rebuild `docs/index.html` and `docs/v2/index.html` with `pnpm build`; do not hand-edit generated files.
+- Add generated targets in `scripts/build-examples.mjs`.
+- Never hand-edit `docs`; regenerate it with `pnpm build` and commit source and output together.
 
 ## Contract invariants
 
-1. The server exposes ordinary MCP tools and resources. Do not add an OpenWork-specific runtime manifest or wrapper-tool protocol.
-2. `open_project_atlas` attaches the UI through exact `_meta.ui.resourceUri` metadata.
-3. `ui://project-atlas/view.html` is returned as `text/html;profile=mcp-app` and is self-contained and under 768 KiB.
-4. The app calls tools only on the MCP server that served its UI. It uses native `search_projects` for this repository's server, or the app-specific Program tool named in launch `structuredContent` after URL import into OpenWork.
-5. Launch and search data arrive through standard tool-result `structuredContent`; content and `_meta` remain standard MCP result fields.
-6. React and Vite are authoring choices. The compiled HTML is the MCP App resource; this is not React SSR.
-7. Mock records, credentials, connection IDs, and provider secrets must never enter the compiled UI resource.
-8. The GitHub Pages URL is a static-resource example. Tool-backed operation uses either this repository's standard MCP server or an app-specific Code Mode Program supplied by the OpenWork URL adapter; the Program, not the UI, accesses OpenWork Connect capabilities.
+1. Expose ordinary MCP tools and resources. Do not add an OpenWork-specific HTML manifest, iframe protocol, or wrapper-tool protocol.
+2. Every launch tool attaches one exact resource through `_meta.ui.resourceUri`; each `ui://` URI must be immutable/versioned and readable as `text/html;profile=mcp-app`.
+3. Apps call only app-visible tools on the MCP server that served their UI.
+4. For OpenWork URL imports, read the exact capability-search and execution tool names from launch `structuredContent.serverTools`; never guess them or embed an installation ID.
+5. Search and execution use ordinary MCP `tools/call` and results. Programs remain server-side durable resources; do not reintroduce per-App `run_program_*` tools.
+6. Preserve authorization, annotations, confirmation requirements, and audit behavior. The UI must never receive credentials or directly contact unrelated MCP servers.
+7. React and Vite are authoring choices. The compiled HTML is the runtime MCP App resource; do not call this React SSR.
+8. Fixture records, credentials, connection IDs, and provider secrets must never enter a compiled resource.
+9. A static URL App must remain useful in launch-only mode or clearly explain that its gateway is unavailable.
+10. Keep OpenWork-generated UI authoring separate. This repo demonstrates external authoring, native MCP Apps, URL import, and capability use—not source submission to OpenWork.
 
 ## Agent acceptance check
 
-After a change, run `pnpm verify`, use `pnpm dev` to confirm the playground reaches **Connected**, and call Project search once. If the MCP contract changes, update the app, server, browser playground, checks, and docs together.
+After a change, run `pnpm verify`, then use `pnpm dev` to confirm all three frames reach **Connected**. Search projects in Project Atlas, search and execute a match in Capability Explorer, and switch through every Component Gallery state. If an MCP contract changes, update the App, server, playground, protocol checks, execution contract, and demo script together.

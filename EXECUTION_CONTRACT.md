@@ -1,64 +1,77 @@
-# Project Atlas execution contract
+# MCP App execution contract
 
-This repository demonstrates one independently authored MCP App UI with two standards-based distribution paths: its own MCP server, or an immutable URL import served by OpenWork with a Plugin-contained Code Mode Program.
+This repository demonstrates independently authored MCP App UIs with two standards-based distribution paths: a normal MCP server, or an immutable HTTPS URL import served by OpenWork.
 
-## 1. Authoring
+## 1. Authoring and build
 
-Authors may use Vite, React, another framework, or no framework; work with any coding agent; replace the sample tools and data; and deploy to any suitable host. OpenWork never needs the source repository. The deployable boundaries are the MCP endpoint and the compiled UI resource.
+Authors may use Vite, React, another framework, or no framework; work with any coding agent; replace the examples and tools; and deploy to any suitable host. OpenWork never needs the source repository. The deployable boundaries are either a standard MCP endpoint or one compiled, self-contained HTML document.
 
-## 2. Server contract
+React source is an authoring input compiled during this project's build. The generated HTML is the runtime MCP App resource. The build does not produce pre-rendered React markup, so this is not React SSR.
 
-`scripts/mcp-server.mjs` is an ordinary stateless Streamable HTTP MCP server. It advertises `io.modelcontextprotocol/ui`, registers native tools, and returns normal MCP resources and tool results.
+## 2. Native MCP server
 
-`open_project_atlas` references `ui://project-atlas/view.html` through `_meta.ui.resourceUri`. The resource is returned by exact `resources/read` with MIME type `text/html;profile=mcp-app`. `search_projects` remains a native same-server tool; OpenWork does not rename it or place it behind an app-specific wrapper protocol.
+`scripts/mcp-server.mjs` is an ordinary stateless Streamable HTTP MCP server. It advertises the stable MCP Apps extension, registers native tools and resources, and returns normal MCP results.
 
-## 3. UI resource contract
-
-The MCP App resource is a complete self-contained HTML document under 768 KiB. Scripts, styles, React, and the MCP Apps client are inlined. It does not load application code, fonts, images, or stylesheets from the network.
-
-React source is an authoring input compiled server-side during the project build. The immutable HTML is the runtime MCP resource. No pre-rendered React markup is produced, so this is not React SSR.
-
-## 4. Runtime contract
+Each `open_*` tool references one exact, versioned `ui://` URI through `_meta.ui.resourceUri`. `resources/read` returns that URI as `text/html;profile=mcp-app`. App-visible `search_capabilities`, `execute_capability`, and `search_projects` tools stay on the same server; there is no custom iframe message or cross-server tool call.
 
 ```text
-MCP App                 Compatible host                  Project Atlas MCP server
-   | <--- resource HTML ------ | <--- resources/read --------- |
-   | --- ui/initialize ------> |
-   | <--- initialize result -- |
-   | --- initialized --------> |
-   | <--- launch tool result --| <--- content/structuredContent|
-   | --- tools/call(search_projects) -------------------------> |
-   | <--- content + structuredContent + _meta ---------------- |
+Agent -> tools/call(open_project_atlas)
+Host  -> resources/read(ui://openwork-examples/project-atlas/1.0.0/index.html)
+Host  -> sandboxed iframe + MCP Apps handshake + launch structuredContent
+App   -> tools/call(search_capabilities) on the same MCP server
+App   -> tools/call(execute_capability) on the same MCP server
 ```
 
-The browser playground implements the compatible-host column locally. OpenWork Desktop implements it with a sandboxed iframe, isolated handshake, CSP enforcement, resource-size checks, teardown, and recovery.
+The search/execution pair in this repository is deterministic example behavior. In OpenWork, those same ordinary MCP calls gateway the current user's authorized Connect tools and durable Code Mode Programs.
 
-## 5. Data and credentials
+## 3. Self-contained resource
 
-The compiled resource contains only UI code and the native same-server fallback tool name. It does not contain mock project records, OpenWork Connect IDs, Program IDs, tokens, API keys, cookies, or provider credentials. Launch data and results arrive in tool `structuredContent`; human-readable summaries remain in `content`; provider/host metadata remains in `_meta`.
+Each generated App is a complete HTML document under 768 KiB. Scripts, styles, React, and the MCP Apps client are inlined. The document does not load application code, fonts, images, or stylesheets from the network.
 
-The mock records in `src/mock-data.json` are loaded by the local host and example MCP server, not by the compiled UI bundle.
+The compiled resources contain presentation and protocol logic, but no fixture records, OpenWork IDs, connection IDs, tokens, API keys, cookies, or provider credentials. Launch data and execution results arrive through tool-result `structuredContent`; human-readable summaries remain in `content`; provider/host metadata remains in `_meta`.
 
-## 6. OpenWork Connect
+`fixtures/mock-data.json` is loaded by the local host and example MCP server, not by any compiled App.
 
-When the public MCP endpoint is added through OpenWork Connect, OpenWork authorizes access per member and exposes that connection as its own standard MCP server endpoint. It preserves native names, input/output schemas, annotations, UI metadata, resources, content, `structuredContent`, `_meta`, and provider errors. Keeping each connection on a separate endpoint preserves tool-name isolation and the MCP Apps same-server boundary.
+## 4. Browser host
 
-Apps can call only tools from the MCP server that supplied their resource. OpenWork policy may block a tool, and write-capable tools require host/user approval; neither behavior creates an alternate application protocol.
+The local playground implements a compatible host for iteration. It creates one isolated MCP Apps bridge per iframe, completes `ui/initialize`, sends each launch result, handles app tool calls, accepts size notifications, and records visible protocol events. It does not imitate OpenWork-specific runtime messages.
 
-## 7. Static URL adapter
+OpenWork Desktop provides the production host boundary: sandboxed iframe loading, isolated handshakes, CSP enforcement, resource-size checks, teardown, and error recovery.
 
-The generated GitHub Pages document can also be imported as a static Library app. OpenWork downloads it once, validates that it is self-contained, enforces the byte limit, computes a digest, stores immutable source and metadata, and publishes it through an ordinary launch tool and versioned `ui://` resource.
+## 5. OpenWork Connect and native Apps
 
-Static hosting cannot provide native MCP tools. When Code Mode is enabled, the OpenWork adapter advertises one app-specific Program tool in launch `structuredContent`. The app calls that tool through standard same-server `tools/call`; the selected Program must be inside the app's Plugin and calls authorized OpenWork Connect capabilities server-side. This keeps browser credentials out of the resource and does not create cross-server app tool calls.
+When this or another MCP endpoint is added through Connect, OpenWork exposes only ready, authorized connections. It preserves native names, schemas, annotations, UI metadata, resources, content, `structuredContent`, `_meta`, and safe provider errors.
 
-If no Program tool is advertised, the installed static resource remains a launch-only app. When this same resource is served by Project Atlas's own MCP server, it uses the native `search_projects` tool instead.
+A native MCP App calls app-visible tools only on the server that supplied its resource. OpenWork policy may deny a call, and write/destructive tools retain confirmation requirements. Credentials stay in the server-side connection.
+
+## 6. URL-import adapter
+
+An agent may ask OpenWork Connect to install a public HTTPS URL that resolves to one self-contained `index.html`. Installation requires user approval. OpenWork downloads the bytes server-side with redirect, network, MIME, timeout, and size validation; computes a digest; caches the exact bytes; and publishes an immutable revision through an ordinary launch tool and versioned `ui://` resource.
+
+The host never iframes or executes the live source URL. A later source change or outage does not mutate the cached revision. Updating creates a new revision that can be activated, retired, or rolled back independently.
+
+OpenWork supplies the imported App's app-visible gateway names in launch `structuredContent`. The App uses `search_capabilities` to discover allowed Connect tools and Programs and `execute_capability` to execute an exact selected match. Both are ordinary same-server MCP calls. OpenWork resolves the underlying capability server-side and preserves its authorization, schema, confirmation, and audit behavior.
+
+This is installation/gateway behavior, not a new MCP protocol primitive. The iframe never receives credentials or calls unrelated MCP endpoints directly.
+
+## 7. Capability boundaries
+
+- Agents may import a remote self-contained App URL when a user approves installation.
+- Sandboxed Apps cannot invoke the model-visible import tool.
+- Imported Apps may use only the app-visible gateway names explicitly supplied by their launch result.
+- Programs remain durable server-side resources and may compose authorized Connect capabilities.
+- OpenWork-generated UI authoring, React source submission, compilation, publication, and revision tools remain separate and may be disabled while imported/native Apps and Programs remain enabled.
+- A host that supplies no gateway still renders a launch-only App. The Component Gallery is the reference for this mode.
 
 ## 8. Verification
 
 `pnpm verify` proves:
 
-- TypeScript authoring code compiles;
-- each generated UI is self-contained and below 768 KiB;
-- no OpenWork-specific runtime manifest or local mock records enter the resource;
-- the server exposes the exact native tools and UI resource metadata; and
-- standard calls preserve `content`, `structuredContent`, and `_meta`.
+- all TypeScript authoring code compiles;
+- all generated UIs are complete, self-contained, and below 768 KiB;
+- fixture records and sensitive-looking values do not enter the resources;
+- all launch tools reference exact versioned resources;
+- all resources read with the MCP App MIME type;
+- launch results deliver exact gateway names through `structuredContent`;
+- app-visible capability search and execution return ordinary MCP results; and
+- a native same-server tool still returns structured data.
