@@ -10,7 +10,7 @@ const SEARCH_TOOL_NAME = "search_projects";
 
 type ServerToolContract = {
   name: string;
-  source: "native" | "openwork_program";
+  source: "native" | "openwork_program" | "unavailable";
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -30,6 +30,9 @@ function toolContract(value: unknown): ServerToolContract {
     const serverTools = value.structuredContent.serverTools;
     if (isRecord(serverTools) && typeof serverTools.runProgram === "string") {
       return { name: serverTools.runProgram, source: "openwork_program" };
+    }
+    if (isRecord(value.structuredContent.app)) {
+      return { name: "", source: "unavailable" };
     }
   }
   return { name: SEARCH_TOOL_NAME, source: "native" };
@@ -80,7 +83,7 @@ function ProjectAtlas() {
   }, [connectionState]);
 
   const runSearch = async () => {
-    if (connectionState !== "ready") return;
+    if (connectionState !== "ready" || serverTool.source === "unavailable") return;
     setBusy(true);
     setResult("");
     try {
@@ -115,7 +118,9 @@ function ProjectAtlas() {
         <p>
           {serverTool.source === "openwork_program"
             ? <>The imported app calls <code>{serverTool.name}</code> on the OpenWork MCP server; its Program reaches Connect capabilities server-side.</>
-            : <>The app calls the native <code>{serverTool.name}</code> tool on the MCP server that served this resource.</>}
+            : serverTool.source === "native"
+              ? <>The app calls the native <code>{serverTool.name}</code> tool on the MCP server that served this resource.</>
+              : <>This imported copy is launch-only until a Code Mode Program is added to its Plugin and selected.</>}
         </p>
         {connectionState === "ready" ? (
           <div className="capability">
@@ -127,7 +132,7 @@ function ProjectAtlas() {
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search projects"
               />
-              <button type="button" disabled={busy || !query.trim()} onClick={() => void runSearch()}>
+              <button type="button" disabled={busy || !query.trim() || serverTool.source === "unavailable"} onClick={() => void runSearch()}>
                 {busy ? "Searching…" : "Search"}
               </button>
             </div>
