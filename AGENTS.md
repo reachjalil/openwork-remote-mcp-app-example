@@ -28,11 +28,11 @@ pnpm verify
 1. The server exposes ordinary MCP tools and resources. Do not add an OpenWork-specific runtime manifest or wrapper-tool protocol.
 2. `open_project_atlas` attaches the UI through exact `_meta.ui.resourceUri` metadata.
 3. `ui://project-atlas/view.html` is returned as `text/html;profile=mcp-app` and is self-contained and under 768 KiB.
-4. The app calls the native `search_projects` tool on the same MCP server that served its UI.
+4. The app calls tools only on the MCP server that served its UI. It uses native `search_projects` for this repository's server, or the app-specific Program tool named in launch `structuredContent` after URL import into OpenWork.
 5. Launch and search data arrive through standard tool-result `structuredContent`; content and `_meta` remain standard MCP result fields.
 6. React and Vite are authoring choices. The compiled HTML is the MCP App resource; this is not React SSR.
 7. Mock records, credentials, connection IDs, and provider secrets must never enter the compiled UI resource.
-8. The GitHub Pages URL is a static-resource example. Tool-backed operation requires the standard MCP server to be reachable through OpenWork Connect or another compatible MCP host.
+8. The GitHub Pages URL is a static-resource example. Tool-backed operation uses either this repository's standard MCP server or an app-specific Code Mode Program supplied by the OpenWork URL adapter; the Program, not the UI, accesses OpenWork Connect capabilities.
 
 ## Agent acceptance check
 

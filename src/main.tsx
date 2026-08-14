@@ -8,6 +8,11 @@ declare const __APP_VERSION__: string;
 type ConnectionState = "standalone" | "connecting" | "connected" | "ready" | "error" | "closed";
 const SEARCH_TOOL_NAME = "search_projects";
 
+type ServerToolContract = {
+  name: string;
+  source: "native" | "openwork_program";
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -18,6 +23,16 @@ function describeToolResult(value: unknown): string {
   if (!Array.isArray(value.content)) return "The capability returned no displayable result.";
   const text = value.content.flatMap((entry) => isRecord(entry) && typeof entry.text === "string" ? [entry.text] : []);
   return text.join("\n") || "The capability completed.";
+}
+
+function toolContract(value: unknown): ServerToolContract {
+  if (isRecord(value) && isRecord(value.structuredContent)) {
+    const serverTools = value.structuredContent.serverTools;
+    if (isRecord(serverTools) && typeof serverTools.runProgram === "string") {
+      return { name: serverTools.runProgram, source: "openwork_program" };
+    }
+  }
+  return { name: SEARCH_TOOL_NAME, source: "native" };
 }
 
 const isEmbedded = window.parent !== window;
@@ -32,11 +47,16 @@ function ProjectAtlas() {
   const [query, setQuery] = useState("migration");
   const [result, setResult] = useState("");
   const [busy, setBusy] = useState(false);
+  const [serverTool, setServerTool] = useState<ServerToolContract>({
+    name: SEARCH_TOOL_NAME,
+    source: "native",
+  });
 
   useEffect(() => {
     if (!isEmbedded) return;
 
     mcpApp.ontoolresult = (toolResult) => {
+      setServerTool(toolContract(toolResult));
       setResult(describeToolResult(toolResult));
       setConnectionState("ready");
     };
@@ -51,7 +71,7 @@ function ProjectAtlas() {
   }, []);
 
   const status = useMemo(() => {
-    if (connectionState === "standalone") return "Standalone bundle preview — add the MCP server through OpenWork Connect, or import this page as a static Library app.";
+    if (connectionState === "standalone") return "Standalone bundle preview — add the MCP server through OpenWork Connect, or import this page and add a Program to its Plugin.";
     if (connectionState === "connected") return "MCP Apps handshake complete; waiting for launch data.";
     if (connectionState === "ready") return "Launch data received from the host as structuredContent.";
     if (connectionState === "error") return "The MCP Apps handshake could not be completed.";
@@ -65,8 +85,10 @@ function ProjectAtlas() {
     setResult("");
     try {
       const response = await mcpApp.callServerTool({
-        name: SEARCH_TOOL_NAME,
-        arguments: { query },
+        name: serverTool.name,
+        arguments: serverTool.source === "openwork_program"
+          ? { input: { query } }
+          : { query },
       });
       setResult(describeToolResult(response));
     } catch (error) {
@@ -90,7 +112,11 @@ function ProjectAtlas() {
 
       <section>
         <h2>Same-server MCP tool</h2>
-        <p>The app calls the native <code>{SEARCH_TOOL_NAME}</code> tool on the MCP server that served this resource.</p>
+        <p>
+          {serverTool.source === "openwork_program"
+            ? <>The imported app calls <code>{serverTool.name}</code> on the OpenWork MCP server; its Program reaches Connect capabilities server-side.</>
+            : <>The app calls the native <code>{serverTool.name}</code> tool on the MCP server that served this resource.</>}
+        </p>
         {connectionState === "ready" ? (
           <div className="capability">
             <label htmlFor="project-query">Project search</label>

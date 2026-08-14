@@ -2,7 +2,7 @@
 
 Project Atlas is a complete open-source MCP App development repository. It includes a Vite + React UI, a real Streamable HTTP MCP server, deterministic mock data, a browser playground, a self-contained published resource, and protocol-level checks.
 
-You can clone it, give it to your own coding agent, change the interface or tools, test everything locally, deploy the server anywhere that supports Node.js, and add that MCP server to OpenWork Connect. There is no OpenWork-specific runtime manifest or generated wrapper-tool contract.
+You can clone it, give it to your own coding agent, change the interface or tools, test everything locally, and then choose either distribution path: deploy its standard MCP server through OpenWork Connect, or publish the self-contained UI and import that URL into an OpenWork Plugin with a Code Mode Program. There is no OpenWork-specific runtime manifest in the HTML.
 
 ## Run the complete local loop
 
@@ -14,7 +14,7 @@ pnpm verify
 pnpm dev
 ```
 
-Vite opens `http://localhost:5173/playground.html`. The playground embeds the app, performs the MCP Apps `postMessage` handshake, delivers launch data in tool-result `structuredContent`, and handles the native `search_projects` same-server call with records from `src/mock-data.json`.
+Vite opens `http://localhost:5173/playground.html`. The playground embeds the app, performs the MCP Apps `postMessage` handshake, delivers launch data in tool-result `structuredContent`, and simulates OpenWork's app-specific Program tool with records from `src/mock-data.json`. The separate real MCP server exercises the native `search_projects` fallback.
 
 In another terminal, run the real MCP server:
 
@@ -70,7 +70,9 @@ https://reachjalil.github.io/openwork-remote-mcp-app-example/index.html
 
 An OpenWork build with the URL-import adapter can download that document into the Library, validate it, digest it, and serve it later as an immutable standard MCP App resource. The cached copy no longer depends on GitHub at runtime.
 
-The Pages URL is deliberately static. It cannot host `search_projects`. Use the MCP server path above when the app needs native tools; use URL import when a self-contained static view is sufficient.
+The Pages URL is deliberately static, so it cannot host `search_projects` itself. When OpenWork imports it, the launch result advertises an app-specific, app-visible Program tool on the same OpenWork MCP server. Add a Code Mode Program to the app's Plugin and select it; the UI calls the advertised tool with standard `tools/call`, and the Program can compose the user's OpenWork Connect capabilities server-side. Credentials and connection IDs never enter the HTML.
+
+The bundle falls back to its native `search_projects` tool when it is rendered by this repository's own MCP server. It uses the Program tool only when the launch result explicitly supplies that tool name.
 
 ## Execution boundary
 
@@ -84,7 +86,14 @@ Host  -> sandboxed MCP App iframe
 App   -> tools/call(search_projects) on the same MCP server
 ```
 
-The UI bundle contains presentation logic and the stable native tool name. It contains no credentials, OpenWork connection IDs, or mock records. Artifact data arrives at render time from standard MCP tool results.
+For the URL-import path, the final line becomes:
+
+```text
+App     -> tools/call(run_program_<app>) on the same OpenWork MCP server
+Program -> connected MCP capabilities inside OpenWork Connect
+```
+
+The UI bundle contains presentation logic and a native fallback tool name. An imported app reads its exact Program tool name from launch `structuredContent`; it does not guess or embed an OpenWork installation identifier. The bundle contains no credentials, OpenWork connection IDs, or mock records. Data arrives at render time from standard MCP tool results.
 
 See [`EXECUTION_CONTRACT.md`](EXECUTION_CONTRACT.md) for the full boundary. The OpenWork integration is developed in [OpenWork PR #3758](https://github.com/different-ai/openwork/pull/3758), on top of the merged Plugin foundation from [PR #3759](https://github.com/different-ai/openwork/pull/3759).
 

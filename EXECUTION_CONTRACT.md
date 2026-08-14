@@ -1,6 +1,6 @@
 # Project Atlas execution contract
 
-This repository demonstrates one independently authored, standard MCP server with an MCP App UI.
+This repository demonstrates one independently authored MCP App UI with two standards-based distribution paths: its own MCP server, or an immutable URL import served by OpenWork with a Plugin-contained Code Mode Program.
 
 ## 1. Authoring
 
@@ -35,7 +35,7 @@ The browser playground implements the compatible-host column locally. OpenWork D
 
 ## 5. Data and credentials
 
-The compiled resource contains only UI code and the native same-server tool name. It does not contain mock project records, OpenWork Connect IDs, tokens, API keys, cookies, or provider credentials. Launch data and search results arrive in tool `structuredContent`; human-readable summaries remain in `content`; provider/host metadata remains in `_meta`.
+The compiled resource contains only UI code and the native same-server fallback tool name. It does not contain mock project records, OpenWork Connect IDs, Program IDs, tokens, API keys, cookies, or provider credentials. Launch data and results arrive in tool `structuredContent`; human-readable summaries remain in `content`; provider/host metadata remains in `_meta`.
 
 The mock records in `src/mock-data.json` are loaded by the local host and example MCP server, not by the compiled UI bundle.
 
@@ -49,7 +49,9 @@ Apps can call only tools from the MCP server that supplied their resource. OpenW
 
 The generated GitHub Pages document can also be imported as a static Library app. OpenWork downloads it once, validates that it is self-contained, enforces the byte limit, computes a digest, stores immutable source and metadata, and publishes it through an ordinary launch tool and versioned `ui://` resource.
 
-Static hosting cannot provide native MCP tools. The adapter does not invent capability mappings. Tool-backed apps must be distributed with a reachable MCP server.
+Static hosting cannot provide native MCP tools. When Code Mode is enabled, the OpenWork adapter advertises one app-specific Program tool in launch `structuredContent`. The app calls that tool through standard same-server `tools/call`; the selected Program must be inside the app's Plugin and calls authorized OpenWork Connect capabilities server-side. This keeps browser credentials out of the resource and does not create cross-server app tool calls.
+
+If no Program tool is advertised, the installed static resource remains a launch-only app. When this same resource is served by Project Atlas's own MCP server, it uses the native `search_projects` tool instead.
 
 ## 8. Verification
 

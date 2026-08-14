@@ -3,6 +3,7 @@ import { searchMockProjects } from "./mock-data";
 import "./playground.css";
 
 const SEARCH_TOOL_NAME = "search_projects";
+const PROGRAM_TOOL_NAME = "run_program_local";
 
 function requireElement<T extends HTMLElement>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -13,6 +14,10 @@ function requireElement<T extends HTMLElement>(selector: string): T {
 function readQuery(value: unknown): string {
   if (typeof value !== "object" || value === null || Array.isArray(value)) return "";
   const outer = value as Record<string, unknown>;
+  if (typeof outer.input === "object" && outer.input !== null && !Array.isArray(outer.input)) {
+    const input = outer.input as Record<string, unknown>;
+    return typeof input.query === "string" ? input.query : "";
+  }
   return typeof outer.query === "string" ? outer.query : "";
 }
 
@@ -47,7 +52,7 @@ const bridge = new AppBridge(
 );
 
 bridge.oncalltool = async (params) => {
-  if (params.name !== SEARCH_TOOL_NAME) {
+  if (params.name !== SEARCH_TOOL_NAME && params.name !== PROGRAM_TOOL_NAME) {
     logEvent("Blocked tool call", params.name);
     return {
       isError: true,
@@ -57,7 +62,19 @@ bridge.oncalltool = async (params) => {
 
   const query = readQuery(params.arguments);
   const projects = searchMockProjects(query);
-  logEvent("Native MCP tool called", `${params.name} · query “${query}” · ${projects.length} result(s)`);
+  const throughProgram = params.name === PROGRAM_TOOL_NAME;
+  logEvent(throughProgram ? "Program tool called" : "Native MCP tool called", `${params.name} · query “${query}” · ${projects.length} result(s)`);
+  if (throughProgram) {
+    return {
+      content: [{ type: "text", text: `The local Program found ${projects.length} mock project(s) for “${query}”.` }],
+      structuredContent: {
+        status: "succeeded",
+        value: { projects },
+        receiptId: "local-program-receipt",
+        resultDigest: "local-program-digest",
+      },
+    };
+  }
   return {
     content: [{ type: "text", text: `Found ${projects.length} mock project(s) for “${query}”.` }],
     structuredContent: {
@@ -84,9 +101,10 @@ bridge.oninitialized = () => {
         source: "local standard MCP server mock",
         query: "migration",
         projects: searchMockProjects("migration"),
+        serverTools: { runProgram: PROGRAM_TOOL_NAME },
       },
     }))
-    .then(() => logEvent("Launch data delivered", "The host sent the launch tool result through standard structuredContent."))
+    .then(() => logEvent("Launch data delivered", `The host advertised ${PROGRAM_TOOL_NAME} through standard structuredContent.`))
     .catch((error: unknown) => {
       status.textContent = "Launch failed";
       status.dataset.state = "error";
@@ -97,7 +115,7 @@ bridge.oninitialized = () => {
 const targetWindow = frame.contentWindow;
 if (!targetWindow) throw new Error("The local app iframe is unavailable.");
 
-logEvent("Host ready", `Same-server tool: ${SEARCH_TOOL_NAME}`);
+logEvent("Host ready", `Native tool: ${SEARCH_TOOL_NAME}; imported-app Program tool: ${PROGRAM_TOOL_NAME}`);
 void bridge.connect(new PostMessageTransport(targetWindow, targetWindow))
   .then(() => {
     frame.src = new URL("./?embedded=1", window.location.href).toString();
